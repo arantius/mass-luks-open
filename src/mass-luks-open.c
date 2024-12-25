@@ -27,9 +27,16 @@ with this program; if not, see <https://www.gnu.org/licenses/>.
 //#include <libcryptsetup.h>
 
 
+#define VOL_STATUS_UNKNOWN 0
+#define VOL_STATUS_NEW 1
+#define VOL_STATUS_OPEN 2
+#define VOL_STATUS_FAIL 3
+
+
 struct LuksVolume {
   const char* device_name;
   const char* label;
+  int status;
 
   struct LuksVolume* next;
 };
@@ -39,6 +46,7 @@ struct LuksVolume* new_luks_volume(const char* device_name, const char* label) {
   struct LuksVolume* v = malloc(sizeof(struct LuksVolume));
   v->device_name = strdup(device_name);
   v->label = strdup(label);
+  v->status = VOL_STATUS_UNKNOWN;
   v->next = NULL;
   return v;
 }
