@@ -42,7 +42,7 @@ struct LuksVolume {
 };
 
 
-struct LuksVolume* new_luks_volume(const char* device_name, const char* label) {
+struct LuksVolume* _new_luks_volume(const char* device_name, const char* label) {
   struct LuksVolume* v = malloc(sizeof(struct LuksVolume));
   v->device_name = strdup(device_name);
   v->label = strdup(label);
@@ -89,7 +89,7 @@ int gather_luks_volumes(struct LuksVolume** list) {
       label = blkid_get_tag_value(cache, "LABEL", device_name);
     }
 
-    struct LuksVolume* volume = new_luks_volume(device_name, label);
+    struct LuksVolume* volume = _new_luks_volume(device_name, label);
     if (*list == NULL) {
       *list = volume;
       tail = volume;
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
   }
 
   struct LuksVolume* volumes = NULL;
-  gather_luks_volumes(&volumes);
+  if (gather_luks_volumes(&volumes)) return 1;
   
   struct LuksVolume* v = volumes;
   while (v != NULL) {
