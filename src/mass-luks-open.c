@@ -16,38 +16,49 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <search.h>
 #include <stdio.h>
-//#include <stdlib.h>
+#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-//#include <inttypes.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <blkid/blkid.h>
 //#include <libcryptsetup.h>
 
-int main(int argc, char **argv) {
-  if (geteuid()) {
-    printf("Using of libcryptsetup requires super user privileges.\n");
-    return 1;
-  }
 
+struct LuksVolume {
+  const char* device_name;
+  const char* label;
+
+  struct LuksVolume* next;
+};
+
+
+struct LuksVolume* new_luks_volume(const char* device_name, const char* label) {
+  struct LuksVolume* v = malloc(sizeof(struct LuksVolume));
+  v->device_name = strdup(device_name);
+  v->label = strdup(label);
+  v->next = NULL;
+  return v;
+}
+
+
+int gather_luks_volumes(struct LuksVolume** list) {
   blkid_probe pr;
   blkid_dev dev;
-  const char *device;
+  const char *device_name;
   const char *label;
   const char *type;
 
   // https://cdn.kernel.org/pub/linux/utils/util-linux/v2.32/libblkid-docs/libblkid-Cache.html#blkid-probe-all ?
 
-  // Open the blkid cache to access device information
   blkid_cache cache;
   if (blkid_get_cache(&cache, NULL) != 0) {
     perror("blkid_get_cache");
     return 1;
   }
 
-  // Enumerate all devices in the blkid cache
   blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
   if (iter == NULL) {
     fprintf(stderr, "Error initializing device iteration\n");
@@ -55,25 +66,53 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // Iterate through each device and check for LUKS signature
-  while (!blkid_dev_next(iter, &dev)) {
-    device = blkid_dev_devname(dev);
-    if (!device) continue;
+  *list = NULL;
+  struct LuksVolume* tail = NULL;
 
-    type = blkid_get_tag_value(cache, "TYPE", device);
+  while (!blkid_dev_next(iter, &dev)) {
+    device_name = blkid_dev_devname(dev);
+    if (!device_name) continue;
+
+    type = blkid_get_tag_value(cache, "TYPE", device_name);
     if (!type || strcmp(type, "crypto_LUKS") != 0) continue;
 
-    label = blkid_get_tag_value(cache, "PARTLABEL", device);
+    label = blkid_get_tag_value(cache, "PARTLABEL", device_name);
     if (!label) {
-      label = blkid_get_tag_value(cache, "LABEL", device);
+      label = blkid_get_tag_value(cache, "LABEL", device_name);
     }
 
-    printf("Device %s has LUKS signature and label %s\n", device, label);
+    struct LuksVolume* volume = new_luks_volume(device_name, label);
+    if (*list == NULL) {
+      *list = volume;
+      tail = volume;
+    } else {
+      tail->next = volume;
+      tail = volume;
+    }
   }
 
   // Cleanup iteration and cache
   blkid_dev_iterate_end(iter);
   blkid_put_cache(cache);
+
+  return 0;
+}
+
+
+int main(int argc, char **argv) {
+  if (geteuid()) {
+    printf("mass-luks-open requires super user privileges.\n");
+    return 1;
+  }
+
+  struct LuksVolume* volumes = NULL;
+  gather_luks_volumes(&volumes);
+  
+  struct LuksVolume* v = volumes;
+  while (v != NULL) {
+    printf("LUKS volume [%s] has label [%s].\n", v->device_name, v->label);
+    v = v->next;
+  }
 
   return 0;
 }
