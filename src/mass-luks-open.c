@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
   blkid_probe pr;
   blkid_dev dev;
   const char *device;
+  const char *label;
   const char *type;
 
   // https://cdn.kernel.org/pub/linux/utils/util-linux/v2.32/libblkid-docs/libblkid-Cache.html#blkid-probe-all ?
@@ -60,13 +61,14 @@ int main(int argc, char **argv) {
     if (!device) continue;
 
     type = blkid_get_tag_value(cache, "TYPE", device);
-    if (type && strcmp(type, "crypto_LUKS") == 0) {
-      printf("Device %s has LUKS signature.\n", device);
-      const char* part_label = blkid_get_tag_value(cache, "PARTLABEL", device);
-      if (part_label) {
-        printf("  and partition label %s\n", part_label);
-      }
+    if (!type || strcmp(type, "crypto_LUKS") != 0) continue;
+
+    label = blkid_get_tag_value(cache, "PARTLABEL", device);
+    if (!label) {
+      label = blkid_get_tag_value(cache, "LABEL", device);
     }
+
+    printf("Device %s has LUKS signature and label %s\n", device, label);
   }
 
   // Cleanup iteration and cache
