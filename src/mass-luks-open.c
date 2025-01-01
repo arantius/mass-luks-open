@@ -207,6 +207,8 @@ void show_luks_volumes(struct LuksVolume** volumes) {
 
 
 int main(int argc, char **argv) {
+  printf("Starting mass-luks-open ...\n");
+
   if (geteuid()) {
     printf("mass-luks-open requires super user privileges.\n");
     return 1;
