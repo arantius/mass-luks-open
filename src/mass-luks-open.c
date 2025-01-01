@@ -122,7 +122,7 @@ int open_luks_volumes(struct LuksVolume** volumes) {
     if (passphraseLen == 0) {
       if (readpassphrase(
           "Enter LUKS decryption passphrase: ", passphrase,
-          PASSPHRASE_MAX_LEN, RPP_REQUIRE_TTY) == NULL) {
+          PASSPHRASE_MAX_LEN, RPP_ECHO_OFF) == NULL) {
         fprintf(stderr, "readpassphrase() failed.\n");
         goto check_drives;
       }
