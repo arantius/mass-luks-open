@@ -58,12 +58,14 @@ int gather_luks_volumes(struct LuksVolume** list) {
   const char *label;
   const char *type;
 
-  // https://cdn.kernel.org/pub/linux/utils/util-linux/v2.32/libblkid-docs/libblkid-Cache.html#blkid-probe-all ?
-
   blkid_cache cache;
   if (blkid_get_cache(&cache, NULL) != 0) {
     perror("blkid_get_cache");
     return 1;
+  }
+
+  if (blkid_probe_all(cache)) {
+    printf("WARN: blkid_probe_all() failed\n");
   }
 
   blkid_dev_iterate iter = blkid_dev_iterate_begin(cache);
