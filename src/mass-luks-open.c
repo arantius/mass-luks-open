@@ -20,10 +20,10 @@ with this program; if not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <blkid/blkid.h>
-#include <bsd/readpassphrase.h>
 #include <libcryptsetup.h>
 
 
@@ -39,6 +39,23 @@ struct LuksVolume {
 
   struct LuksVolume* next;
 };
+
+
+ssize_t _get_passphrase(char** passphrase, size_t max_len, FILE* stream) {
+  struct termios term_old, term_new;
+  if (tcgetattr(fileno(stream), &term_old)) return -1;
+  term_new = term_old;
+  term_new.c_lflag &= ~ECHO;
+  if (tcsetattr(fileno(stream), TCSAFLUSH, &term_new)) return -1;
+
+  size_t nread = getline(passphrase, &max_len, stream);
+  tcsetattr(fileno(stream), TCSAFLUSH, &term_old);
+  printf("\n");
+
+  // Remove newline delimiter.
+  (*passphrase)[nread-1] = '\0';
+  return --nread;
+}
 
 
 struct LuksVolume* _new_luks_volume(const char* device_path, const char* label) {
@@ -114,19 +131,18 @@ int gather_luks_volumes(struct LuksVolume** list) {
 int open_luks_volumes(struct LuksVolume** volumes) {
   #define PASSPHRASE_MAX_LEN 512
   char* passphrase = crypt_safe_alloc(PASSPHRASE_MAX_LEN);
-  size_t passphraseLen = 0;
+  ssize_t passphrase_len = 0;
   struct LuksVolume* v = *volumes;
   while (v != NULL) {
     if (v->status == VOL_STATUS_OPEN) continue;
 
-    if (passphraseLen == 0) {
-      if (readpassphrase(
-          "Enter LUKS decryption passphrase: ", passphrase,
-          PASSPHRASE_MAX_LEN, RPP_ECHO_OFF) == NULL) {
-        fprintf(stderr, "readpassphrase() failed.\n");
+    if (passphrase_len == 0) {
+      printf("Enter LUKS decryption passphrase: ");
+      passphrase_len = _get_passphrase(&passphrase, PASSPHRASE_MAX_LEN, stdin);
+      if (passphrase_len < 0) {
+        fprintf(stderr, "_get_passphrase() failed.\n");
         goto check_drives;
       }
-      passphraseLen = strlen(passphrase);
     }
 
     printf(
@@ -145,7 +161,7 @@ int open_luks_volumes(struct LuksVolume** volumes) {
     }
 
     int r = crypt_activate_by_passphrase(
-        cd, v->label, CRYPT_ANY_SLOT, passphrase, passphraseLen,
+        cd, v->label, CRYPT_ANY_SLOT, passphrase, passphrase_len,
         CRYPT_ACTIVATE_ALLOW_DISCARDS);
     if (r < 0) {
       printf("Device %s activation failed.\n", v->device_path);
