@@ -9,8 +9,9 @@ CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-unused-variable
 
 LIB =
-LIB += -lcryptsetup
 LIB += -lblkid
+LIB += -lbsd
+LIB += -lcryptsetup
 
 mass-luks-open: mass-luks-open.c
 	gcc $(CFLAGS) -o $@ $^ $(LIB)
