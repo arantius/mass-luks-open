@@ -183,7 +183,24 @@ int open_luks_volumes(struct LuksVolume** volumes) {
     }
   }
 
-  return 0;
+  return num_open > 0;
+}
+
+
+void show_luks_volumes(struct LuksVolume** volumes) {
+  size_t num_volumes = 0;
+  struct LuksVolume* v = *volumes;
+  while (v != NULL) {
+    num_volumes++;
+    v = v->next;
+  }
+  printf("Found %ld LUKS volumes:\n", num_volumes);
+  v = *volumes;
+  int i = 1;
+  while (v != NULL) {
+    printf("%3d %20s => %s\n", i++, v->device_path, v->label);
+    v = v->next;
+  }
 }
 
 
@@ -199,6 +216,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Found no LUKS volumes!\n");
     return 1;
   }
+  show_luks_volumes(&volumes);
   if (open_luks_volumes(&volumes)) return 1;
 
   return 0;
