@@ -10,7 +10,6 @@ CFLAGS += -Wno-unused-variable
 
 LIB =
 LIB += -lblkid
-LIB += -lbsd
 LIB += -lcryptsetup
 
 mass-luks-open: mass-luks-open.c
