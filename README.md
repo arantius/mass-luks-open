@@ -4,4 +4,4 @@ A minimal tool to perform mass `cryptsetup luksOpen` commands with the same pass
 
 Short version: Just run `make`.
 
-Long version: This will compile the program, and install the dracut module.  Compiling requires several libraries to be availble.  On Gentoo, these come from `dev-libs/libbsd`, `sys-apps/util-linux`, and `sys-fs/cryptsetup`.  Emerge these packages before proceeding.  Since this is a dracut module, you'll also need `sys-kernel/dracut` installed.
+Long version: This will compile the program and install the dracut module.  Compiling requires several libraries to be availble.  On Gentoo, these come from `sys-apps/util-linux` and `sys-fs/cryptsetup`.  Emerge these packages before proceeding.
